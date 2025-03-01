@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class Student:
     """Define mandatory fields that constitute a student."""
 
+    id: int
     first_name: str
     last_name: str
     work_group: int
@@ -19,6 +20,7 @@ class Student:
 class Teacher:
     """Define mandatory fields that constitute a teacher."""
 
+    id: int
     first_name: str
     last_name: str
     subject: str
@@ -26,7 +28,7 @@ class Teacher:
 
 
 @dataclass
-class school_class:
+class SchoolClass:
     """Define mandatory fields that constitutes a class."""
 
     teachers: dict[str, list[Teacher]]
@@ -37,24 +39,45 @@ class school_class:
 
     def __post_init__(self):
         """Infer kholle groups from student lists and check their validity."""
+        if not self.teachers:
+            raise ValueError("A school class cannot be initialized without teachers")
+        if not self.students:
+            raise ValueError("A school class cannot be initialized without students")
         self.kholles_groups = self._compute_kholle_groups()
-        self._assert_kholle_groups_validity()
+        self._check_kholle_groups_validity()
 
     def _compute_kholle_groups(self) -> dict[int, list[Student]]:
         kholles_groups: dict[int, list[Student]] = {}
         for student in self.students:
             kholle_group = kholles_groups.get(student.kholle_group, [])
-            kholles_groups[student.kholle_group] = kholle_group.append(Student)
+            kholles_groups[student.kholle_group] = kholle_group + [student]
         return kholles_groups
 
-    def _assert_kholle_groups_validity(self):
-        for kholle_group_students in self.kholles_groups.values():
+    def _check_kholle_groups_validity(self):
+        for kholle_group, kholle_group_students in self.kholles_groups.items():
             # all students within a group are in the same work group
-            assert len({student.work_group for student in kholle_group_students}) == 1
+            if len({student.work_group for student in kholle_group_students}) != 1:
+                raise ValueError(
+                    (
+                        f"The students in kholle group {kholle_group} "
+                        "must all belong to the same work group."
+                    )
+                )
 
             # all students within a group study the same languages
-            assert len({student.language_1 for student in kholle_group_students}) == 1
-            assert len({student.language_2 for student in kholle_group_students}) == 1
+            if (
+                len({student.language_1 for student in kholle_group_students}) != 1
+                or len({student.language_2 for student in kholle_group_students}) != 1
+            ):
+                raise ValueError(
+                    (
+                        f"The students in kholle group {kholle_group} "
+                        "must all study the same languages."
+                    )
+                )
 
-            assert len(kholle_group_students) <= 3
-            assert len(kholle_group_students) >= 1
+            # a kholle group is made of 1-3 students
+            if len(kholle_group_students) > 3:
+                raise ValueError(
+                    f"The kholle group {kholle_group} has too many students (3 max)."
+                )
